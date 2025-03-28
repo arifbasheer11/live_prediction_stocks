@@ -2,3 +2,4 @@ numpy --only-binary :all:
 scipy --only-binary :all:
 pandas
 scikit-learn
+gunicorn
