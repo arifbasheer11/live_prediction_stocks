@@ -231,6 +231,8 @@
 
 # if __name__ == '__main__':
 #     app.run(debug=True)
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 from datetime import datetime  # Import only datetime, not the entire module
