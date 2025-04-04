@@ -856,26 +856,50 @@ def cached_stock_data(ticker, ttl_hash=None):
     del ttl_hash  # To make time-based cache work
     return get_stock_data(ticker)
 
+# def get_stock_data(ticker):
+#     """Fetch stock data using yfinance with multiple fallback attempts"""
+#     attempts = [
+#         {'period': '1mo', 'interval': '1d'},
+#         {'period': '3mo', 'interval': '1d'},
+#         {'period': '7d', 'interval': '1h'},
+#         {'period': '5d', 'interval': '15m'}
+#     ]
+    
+#     for attempt in attempts:
+#         try:
+#             data = yf.Ticker(ticker).history(
+#                 period=attempt['period'],
+#                 interval=attempt['interval']
+#             )['Close']
+#             if len(data) >= 60:
+#                 return data
+#         except Exception as e:
+#             print(f"Attempt failed ({attempt}): {e}")
+    
+#     return pd.Series()
 def get_stock_data(ticker):
-    """Fetch stock data using yfinance with multiple fallback attempts"""
+    """Fetch stock data using yfinance with fallback attempts and headers"""
+    import requests
+    session = requests.Session()
+    session.headers.update({'User-Agent': 'Mozilla/5.0'})
+
     attempts = [
         {'period': '1mo', 'interval': '1d'},
         {'period': '3mo', 'interval': '1d'},
         {'period': '7d', 'interval': '1h'},
         {'period': '5d', 'interval': '15m'}
     ]
-    
+
     for attempt in attempts:
         try:
-            data = yf.Ticker(ticker).history(
-                period=attempt['period'],
-                interval=attempt['interval']
-            )['Close']
+            stock = yf.Ticker(ticker, session=session)
+            data = stock.history(period=attempt['period'], interval=attempt['interval'])['Close']
             if len(data) >= 60:
                 return data
         except Exception as e:
-            print(f"Attempt failed ({attempt}): {e}")
-    
+            print(f"⚠️ Attempt failed for {ticker} with {attempt}: {e}")
+
+    print(f"❌ No data returned for {ticker}")
     return pd.Series()
 
 def get_stock_info(ticker):
@@ -1050,14 +1074,32 @@ def create_lstm_model(input_shape):
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
+# def get_live_price(ticker):
+#     """Get live stock price"""
+#     try:
+#         stock = yf.Ticker(ticker)
+#         live_price = stock.history(period='1d')['Close'].iloc[-1]
+#         return float(live_price)
+#     except Exception as e:
+#         print(f"Error getting live price: {e}")
+#         return None
 def get_live_price(ticker):
-    """Get live stock price"""
+    """Get live stock price with fallback for empty history"""
     try:
-        stock = yf.Ticker(ticker)
-        live_price = stock.history(period='1d')['Close'].iloc[-1]
+        import requests
+        session = requests.Session()
+        session.headers.update({'User-Agent': 'Mozilla/5.0'})
+
+        stock = yf.Ticker(ticker, session=session)
+        hist = stock.history(period='1d')
+
+        if hist.empty:
+            raise ValueError("Live price data is empty.")
+
+        live_price = hist['Close'].iloc[-1]
         return float(live_price)
     except Exception as e:
-        print(f"Error getting live price: {e}")
+        print(f"❌ Error getting live price for {ticker}: {e}")
         return None
 
 def predict_stock_movement(ticker):
